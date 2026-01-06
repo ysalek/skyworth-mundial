@@ -1,0 +1,7 @@
+{
+  "name": "Skyworth Promo Campaign",
+  "description": "Plataforma promocional segura con validación de series, generación de tickets de sorteo y panel administrativo protegido.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

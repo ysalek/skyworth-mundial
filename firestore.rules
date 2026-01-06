@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función helper para admin
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.get('admin', false) == true || 
+        request.auth.uid == 'LTNwDZDCH6cZwqhVH7Ol1guYBuJ2'
+      );
+    }
+
+    // Colección: tv_codes
+    match /tv_codes/{code} {
+      allow read, write: if isAdmin();
+    }
+
+    // Colección: participants
+    match /participants/{participantId} {
+      allow read: if isAdmin();
+      allow write: if false; // Solo escritura vía Cloud Functions (Admin SDK)
+    }
+
+    // Colección: tickets
+    match /tickets/{ticketId} {
+      allow read: if isAdmin();
+      allow write: if false; // Solo escritura vía Cloud Functions (Admin SDK)
+    }
+
+    // Configuración Pública (Fechas, Textos) - Acceso libre para el countdown
+    match /campaign_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Configuración Privada (API Keys, Webhooks) - Solo Admin
+    match /settings/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

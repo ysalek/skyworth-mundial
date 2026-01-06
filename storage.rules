@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Función helper admin
+    // Permite acceso si tiene custom claim 'admin' O si es el UID específico
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.admin == true || 
+        request.auth.uid == 'LTNwDZDCH6cZwqhVH7Ol1guYBuJ2'
+      );
+    }
+
+    // Carpeta temporal de subidas (write-only para usuarios anónimos/públicos)
+    match /uploads/{folder}/{fileName} {
+      allow write: if request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|application/pdf');
+      allow read: if isAdmin(); 
+    }
+
+    // Resto del bucket cerrado
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
