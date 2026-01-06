@@ -58,8 +58,7 @@ const Countdown = () => {
         // Fetch fecha configurable
         const fetchDate = async () => {
             try {
-                // Se cambió de 'settings' a 'campaign_config' para evitar errores de permisos
-                const docRef = doc(db, 'campaign_config', 'general');
+                const docRef = doc(db, 'settings', 'general');
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();

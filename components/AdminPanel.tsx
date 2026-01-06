@@ -161,7 +161,7 @@ export default function AdminPanel() {
 
   const fetchGeneralConfig = async () => {
     try {
-      const docSnap = await getDoc(doc(db, 'campaign_config', 'general'));
+      const docSnap = await getDoc(doc(db, 'settings', 'general'));
       if (docSnap.exists()) {
         const data = docSnap.data();
         setGeneralConfig({ raffleDate: data.raffleDate || '' });

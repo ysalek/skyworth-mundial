@@ -485,8 +485,8 @@ export const setWebhookConfig = functions.https.onCall(async (data, context) => 
 
 export const setGeneralConfig = functions.https.onCall(async (data, context) => {
   assertAdmin(context);
-  // Writes to 'campaign_config' collection which is readable by public
-  await db.collection('campaign_config').doc('general').set({ 
+  // data.raffleDate should be an ISO string or timestamp
+  await db.collection('settings').doc('general').set({ 
     raffleDate: data.raffleDate,
     updatedAt: admin.firestore.FieldValue.serverTimestamp() 
   }, { merge: true });

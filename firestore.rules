@@ -27,15 +27,11 @@ service cloud.firestore {
       allow write: if false; // Solo escritura vía Cloud Functions (Admin SDK)
     }
 
-    // Configuración Pública (Fechas, Textos) - Acceso libre para el countdown
-    match /campaign_config/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Configuración Privada (API Keys, Webhooks) - Solo Admin
+    // Configuración: General es pública para el countdown, el resto (API Keys) es privado.
+    // Se usa un solo bloque match para evitar conflictos de evaluación.
     match /settings/{docId} {
-      allow read, write: if isAdmin();
+      allow read: if docId == 'general' || isAdmin();
+      allow write: if isAdmin();
     }
   }
 }
