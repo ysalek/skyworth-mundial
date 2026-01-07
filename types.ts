@@ -1,57 +1,91 @@
-export type CampaignType = 'EXISTING' | 'NEW_PURCHASE';
-
-export interface TVCode {
-  code: string; // ID del documento y valor
-  tvModel: string;
-  inches: number;
-  ticketMultiplier: number;
-  active: boolean;
-  used: boolean;
-  usedByParticipantId?: string;
-  createdAt?: any;
-}
-
-export interface Participant {
-  participantId: string;
-  campaignType: CampaignType;
+export interface Client {
+  clientId: string;
   fullName: string;
-  ciHash: string; // Para deduplicación
+  ci: string;
+  city: string; // La Paz, Cochabamba, Santa Cruz, El Alto, Other
   email: string;
   phone: string;
-  city: string;
-  code: string;
-  files: {
-    ciFrontPath: string;
-    ciBackPath: string;
-    invoicePath?: string;
-  };
-  ticketsCount: number;
-  notified: {
-    email: boolean;
-    whatsapp: boolean;
-    lastError?: string;
-  };
-  createdAt: any;
+  tvModel: string;
+  serial?: string;
+  invoicePath: string;
+  ticketId: string;
+  createdAt: any; // Timestamp
 }
 
-export interface Ticket {
-  ticketId: string;
-  participantId: string;
-  code: string;
-  inches: number;
-  campaignType: CampaignType;
-  codeString: string; // El código visible ej: SKY-2025-XXXXX
+export interface Seller {
+  uid: string;
+  fullName: string;
+  ci: string;
+  city: string;
+  phone: string;
+  email: string;
+  leaderCi?: string; // CI of the seller who invited this user
+  totalSales: number;
+  lastSaleAt?: any;
+  isCertified?: boolean;
+  quizScore?: number;
+  certifiedAt?: any;
+}
+
+export interface Sale {
+  saleId: string;
+  sellerId: string;
+  tvModel: string;
+  invoiceNumber: string;
+  invoicePath: string;
   createdAt: any;
+  city: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
+export interface LeaderboardData {
+  city: string;
+  topSellers: {
+    name: string;
+    sales: number;
+  }[];
 }
 
 export interface RegistrationResponse {
   success: boolean;
-  tickets: string[];
+  ticketId?: string;
   message: string;
 }
 
-export interface AdminStats {
-  totalParticipants: number;
-  totalTickets: number;
-  codesUsed: number;
+export interface NotificationConfig {
+  whatsapp: {
+    enabled: boolean;
+    token: string;
+    phoneId: string;
+    templateName: string;
+  };
+  email: {
+    enabled: boolean;
+    provider: 'SENDGRID' | 'SMTP';
+    apiKey?: string;
+    host?: string;
+    port?: string;
+    user?: string;
+    pass?: string;
+  };
+}
+
+export interface ValidCode {
+  code: string;
+  model: string;
+  used: boolean;
+  usedBy?: string; // ClientId
+  usedAt?: any;
+  batchId?: string;
+}
+
+export interface Winner {
+  ticketId: string;
+  fullName: string;
+  ci: string;
+  city: string;
+  tvModel: string;
+  phone: string;
+  wonAt: any;
+  selectedBy?: string;
 }

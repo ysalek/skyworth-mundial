@@ -2,35 +2,77 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Función helper para admin
+    // Helper: Check if user is Admin
+    // Using 'in' operator avoids runtime errors if properties like 'admin' or 'email' are missing from the token.
     function isAdmin() {
       return request.auth != null && (
-        request.auth.token.get('admin', false) == true || 
-        request.auth.uid == 'LTNwDZDCH6cZwqhVH7Ol1guYBuJ2'
+        request.auth.uid == 'LTNwDZDCH6cZwqhVH7Ol1guYBuJ2' ||
+        ('admin' in request.auth.token && request.auth.token.admin == true) || 
+        ('email' in request.auth.token && request.auth.token.email == 'admin@skyworth.com')
       );
     }
 
-    // Colección: tv_codes
-    match /tv_codes/{code} {
+    // Helper: Check if user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // 1. PUBLIC CONFIGURATION (Read-only for public)
+    match /campaign_config/general {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /campaign_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // 2. PRIVATE SETTINGS
+    match /settings/{docId} {
       allow read, write: if isAdmin();
     }
 
-    // Colección: participants
-    match /participants/{participantId} {
+    // 3. CLIENTS
+    match /clients/{clientId} {
       allow read: if isAdmin();
-      allow write: if false; // Solo escritura vía Cloud Functions (Admin SDK)
+      allow write: if false; // Writes via Cloud Functions
     }
 
-    // Colección: tickets
-    match /tickets/{ticketId} {
-      allow read: if isAdmin();
-      allow write: if false; // Solo escritura vía Cloud Functions (Admin SDK)
+    // 4. SELLERS (Vendedores)
+    match /sellers/{sellerId} {
+      // Check owner first. If true, logic short-circuits and skips isAdmin check.
+      allow read: if isOwner(sellerId) || isAdmin();
+      
+      // Create: Owner only, initial sales must be 0. Safe access with .get()
+      allow create: if isOwner(sellerId) && request.resource.data.get('totalSales', 0) == 0;
+      
+      // Update: Owner (if sales count unchanged) OR Admin. Safe access with .get()
+      allow update: if (isOwner(sellerId) && request.resource.data.get('totalSales', 0) == resource.data.get('totalSales', 0)) || isAdmin();
+      
+      allow delete: if isAdmin();
     }
 
-    // Configuración: General es pública para el countdown, el resto (API Keys) es privado.
-    // Se usa un solo bloque match para evitar conflictos de evaluación.
-    match /settings/{docId} {
-      allow read: if docId == 'general' || isAdmin();
+    // 5. SALES (Ventas de Vendedores)
+    match /seller_sales/{saleId} {
+      // Allow read if owner (checked via safe access to sellerId in resource) OR admin.
+      // Using .get('sellerId', '') prevents crash if field is missing.
+      allow read: if (request.auth != null && resource.data.get('sellerId', '') == request.auth.uid) || isAdmin();
+      
+      allow write: if isAdmin();
+      
+      // Create: user must set sellerId to their own uid
+      allow create: if request.auth != null && request.resource.data.get('sellerId', '') == request.auth.uid;
+    }
+
+    // 6. VALID CODES (Inventario)
+    match /valid_codes/{codeId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin(); 
+    }
+    
+    // 7. WINNERS (Ganadores del Sorteo)
+    match /winners/{winnerId} {
+      allow read: if true; 
       allow write: if isAdmin();
     }
   }
