@@ -7,11 +7,19 @@ import { Sale, Seller } from '../types';
 
 const CITIES = ['La Paz', 'Cochabamba', 'Santa Cruz', 'El Alto', 'Oruro', 'Potosi', 'Tarija', 'Sucre', 'Beni', 'Pando'];
 
+// Simple Icon Component for Refresh
+const RefreshIcon = ({ spinning }: { spinning: boolean }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${spinning ? 'animate-spin' : ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+  </svg>
+);
+
 export default function SellerPortal() {
   const [user, setUser] = useState(auth.currentUser);
   const [userProfile, setUserProfile] = useState<Seller | null>(null);
   const [activeTab, setActiveTab] = useState<'REGISTER' | 'LEADERBOARD' | 'HISTORY'>('REGISTER');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Auth State
   const [isRegistering, setIsRegistering] = useState(false);
@@ -114,6 +122,7 @@ export default function SellerPortal() {
   };
 
   const fetchLeaderboard = async () => {
+    setRefreshing(true);
     try {
       const getLb = httpsCallable(functions, 'getLeaderboard');
       const res = await getLb();
@@ -121,11 +130,14 @@ export default function SellerPortal() {
     } catch (e: any) { 
         console.error("Leaderboard Error", e);
         setLeaderboard({ error: true });
+    } finally {
+      setRefreshing(false);
     }
   };
 
   const fetchHistory = async () => {
     if (!user) return;
+    setRefreshing(true);
     setHistoryError(null);
     try {
         const q = query(collection(db, 'seller_sales'), where('sellerId', '==', user.uid), orderBy('createdAt', 'desc'));
@@ -138,6 +150,8 @@ export default function SellerPortal() {
         } else {
             setHistoryError("No se pudo cargar el historial.");
         }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -227,7 +241,12 @@ export default function SellerPortal() {
 
         {activeTab === 'HISTORY' && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden animate-fade-in">
-             <div className="p-4 border-b border-gray-100 bg-gray-50"><h3 className="font-bold text-gray-700 uppercase text-sm">Tus Ventas</h3></div>
+             <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                 <h3 className="font-bold text-gray-700 uppercase text-sm">Tus Ventas</h3>
+                 <button onClick={fetchHistory} className="text-skyworth-blue hover:text-skyworth-dark p-1 rounded-full hover:bg-blue-50 transition" title="Actualizar">
+                    <RefreshIcon spinning={refreshing} />
+                 </button>
+             </div>
              {historyError ? (
                 <div className="p-8 text-center">
                     <div className="text-4xl mb-2">🚧</div>
@@ -256,6 +275,11 @@ export default function SellerPortal() {
         
         {activeTab === 'LEADERBOARD' && (
           <div className="space-y-6 animate-fade-in">
+             <div className="flex justify-end mb-2">
+                 <button onClick={fetchLeaderboard} className="flex items-center gap-2 text-xs font-bold text-skyworth-blue bg-white px-3 py-1 rounded shadow-sm hover:bg-gray-50">
+                     <RefreshIcon spinning={refreshing} /> Actualizar Ranking
+                 </button>
+             </div>
              {(!leaderboard || leaderboard.error) && (
                 <div className="p-4 bg-yellow-50 text-yellow-700 text-sm rounded border border-yellow-100 text-center">
                     Calculando posiciones... (Si persiste, se están generando los índices)
