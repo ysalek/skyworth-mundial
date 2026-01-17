@@ -1,3 +1,12 @@
+export interface Product {
+  id?: string;
+  model_name: string;
+  model_key: string;
+  description: string;
+  ticket_multiplier: number;
+  is_active: boolean;
+}
+
 export interface Client {
   clientId: string;
   fullName: string;
@@ -8,7 +17,8 @@ export interface Client {
   tvModel: string;
   serial?: string;
   invoicePath: string;
-  ticketId: string;
+  ticketId?: string; // Legacy single ticket
+  ticketIds?: string[]; // New multiple tickets
   createdAt: any; // Timestamp
 }
 
@@ -49,6 +59,7 @@ export interface LeaderboardData {
 export interface RegistrationResponse {
   success: boolean;
   ticketId?: string;
+  ticketIds?: string[];
   message: string;
 }
 
@@ -72,7 +83,8 @@ export interface NotificationConfig {
 
 export interface ValidCode {
   code: string;
-  model: string;
+  model: string; // This should ideally match Product model_key or model_name
+  productId?: string; // Optional link to specific product
   used: boolean;
   usedBy?: string; // ClientId
   usedAt?: any;

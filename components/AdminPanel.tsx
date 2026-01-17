@@ -3,10 +3,12 @@ import { httpsCallable } from 'firebase/functions';
 import { collection, query, orderBy, limit, getDocs, doc, getDoc, where } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { auth, functions, db } from '../firebase';
-import { NotificationConfig, Winner } from '../types';
+import { NotificationConfig } from '../types';
+import RaffleLayout from './Raffle/RaffleLayout';
+import ProductManager from './Admin/Products/ProductManager';
 
 export default function AdminPanel() {
-  const [section, setSection] = useState<'CLIENTS' | 'SELLERS' | 'SALES' | 'INVENTORY' | 'RAFFLE' | 'CONFIG'>('CLIENTS');
+  const [section, setSection] = useState<'CLIENTS' | 'SELLERS' | 'SALES' | 'INVENTORY' | 'PRODUCTS' | 'RAFFLE' | 'CONFIG'>('CLIENTS');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalClients: 0, totalSellers: 0, totalCodes: 0 });
@@ -17,10 +19,6 @@ export default function AdminPanel() {
       whatsapp: { enabled: false, token: '', phoneId: '', templateName: '' },
       email: { enabled: false, provider: 'SMTP', host: '', port: '', user: '', pass: '' }
   });
-  
-  // Raffle State
-  const [winner, setWinner] = useState<Winner | null>(null);
-  const [isRolling, setIsRolling] = useState(false);
 
   // Inventory State
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -31,9 +29,7 @@ export default function AdminPanel() {
     if (section === 'CONFIG') {
         fetchConfig();
         fetchNotifConfig();
-    } else if (section === 'RAFFLE') {
-        fetchLastWinner();
-    } else if (section !== 'INVENTORY') { 
+    } else if (section !== 'INVENTORY' && section !== 'RAFFLE') {
         fetchStats(); 
         fetchData(); 
     }
@@ -65,14 +61,6 @@ export default function AdminPanel() {
                   email: { ...notifConfig.email, ...d.email }
               });
           }
-      } catch (e) { console.error(e); }
-  };
-
-  const fetchLastWinner = async () => {
-      try {
-          const q = query(collection(db, 'winners'), orderBy('wonAt', 'desc'), limit(1));
-          const snap = await getDocs(q);
-          if (!snap.empty) setWinner(snap.docs[0].data() as Winner);
       } catch (e) { console.error(e); }
   };
 
@@ -135,23 +123,6 @@ export default function AdminPanel() {
       reader.readAsText(csvFile);
   };
 
-  const handlePickWinner = async () => {
-      if (!window.confirm("¿Estás seguro de realizar el sorteo AHORA? Esta acción seleccionará un ganador de la base de datos.")) return;
-      setIsRolling(true);
-      setWinner(null);
-      try {
-          // Simulate tension
-          await new Promise(r => setTimeout(r, 2000));
-          const fn = httpsCallable(functions, 'pickWinner');
-          const res = await fn();
-          setWinner((res.data as any).winner);
-      } catch (e: any) {
-          alert("Error: " + e.message);
-      } finally {
-          setIsRolling(false);
-      }
-  };
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -202,6 +173,7 @@ export default function AdminPanel() {
           <button onClick={() => setSection('SELLERS')} className={`w-full text-left px-4 py-3 rounded ${section === 'SELLERS' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>💼 Vendedores</button>
           <button onClick={() => setSection('SALES')} className={`w-full text-left px-4 py-3 rounded ${section === 'SALES' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>🧾 Validar Ventas</button>
           <div className="border-t border-gray-700 my-2 pt-2"></div>
+          <button onClick={() => setSection('PRODUCTS')} className={`w-full text-left px-4 py-3 rounded ${section === 'PRODUCTS' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>📺 Productos & Tickets</button>
           <button onClick={() => setSection('INVENTORY')} className={`w-full text-left px-4 py-3 rounded ${section === 'INVENTORY' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>📦 Inventario Códigos</button>
           <button onClick={() => setSection('RAFFLE')} className={`w-full text-left px-4 py-3 rounded ${section === 'RAFFLE' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>🎰 Sorteo</button>
           <div className="border-t border-gray-700 my-2 pt-2"></div>
@@ -213,7 +185,9 @@ export default function AdminPanel() {
       <main className="ml-64 flex-1 p-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">{section}</h1>
         
-        {section === 'CONFIG' ? (
+        {section === 'PRODUCTS' ? (
+            <ProductManager />
+        ) : section === 'CONFIG' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl">
             {/* General Settings */}
             <div className="bg-white p-6 rounded shadow">
@@ -286,45 +260,8 @@ export default function AdminPanel() {
                 </div>
             </div>
         ) : section === 'RAFFLE' ? (
-            <div className="max-w-4xl">
-                {isRolling ? (
-                    <div className="bg-white p-12 rounded shadow text-center animate-pulse">
-                        <div className="text-6xl mb-4">🎰</div>
-                        <h2 className="text-3xl font-sport text-skyworth-blue">SELECCIONANDO GANADOR...</h2>
-                        <p className="text-gray-400">Consultando base de datos segura...</p>
-                    </div>
-                ) : winner ? (
-                    <div className="bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-skyworth-accent relative">
-                        <div className="bg-skyworth-blue p-6 text-center text-white relative overflow-hidden">
-                            <div className="absolute inset-0 bg-pattern-soccer opacity-10"></div>
-                            <h2 className="text-4xl font-sport relative z-10">¡TENEMOS GANADOR!</h2>
-                            <p className="text-sm opacity-80 relative z-10">Sorteo Certificado</p>
-                        </div>
-                        <div className="p-8 text-center">
-                            <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-5xl mx-auto mb-6 shadow-inner">🏆</div>
-                            <h3 className="text-3xl font-bold text-gray-800 mb-2">{winner.fullName}</h3>
-                            <div className="inline-block bg-gray-100 px-4 py-1 rounded-full text-gray-600 font-mono text-lg mb-6">{winner.ticketId}</div>
-                            
-                            <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto bg-gray-50 p-6 rounded-lg border border-gray-200">
-                                <div><p className="text-xs text-gray-400 uppercase">Cédula</p><p className="font-bold">{winner.ci}</p></div>
-                                <div><p className="text-xs text-gray-400 uppercase">Ciudad</p><p className="font-bold">{winner.city}</p></div>
-                                <div><p className="text-xs text-gray-400 uppercase">Celular</p><p className="font-bold">{winner.phone}</p></div>
-                                <div><p className="text-xs text-gray-400 uppercase">Modelo TV</p><p className="font-bold">{winner.tvModel}</p></div>
-                            </div>
-
-                            <button onClick={() => setWinner(null)} className="mt-8 text-gray-400 underline hover:text-gray-600 text-sm">Realizar otro sorteo (Pruebas)</button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-white p-8 rounded shadow text-center">
-                        <div className="text-6xl mb-4">🎲</div>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Sistema de Sorteo Aleatorio</h2>
-                        <p className="text-gray-500 mb-8 max-w-md mx-auto">Al presionar el botón, el sistema seleccionará aleatoriamente un registro de la colección de clientes y lo marcará como ganador oficial.</p>
-                        <button onClick={handlePickWinner} className="bg-gradient-to-r from-skyworth-accent to-yellow-500 text-black font-sport text-2xl px-12 py-4 rounded-full shadow-lg hover:scale-105 transition transform">
-                            REALIZAR SORTEO
-                        </button>
-                    </div>
-                )}
+            <div className="h-[calc(100vh-8rem)]">
+                <RaffleLayout />
             </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
