@@ -97,7 +97,7 @@ export default function PublicLanding() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-200 font-sans selection:bg-skyworth-blue selection:text-white">
+    <div className="relative min-h-screen bg-[#0B0F19] text-slate-200 font-sans selection:bg-skyworth-blue selection:text-white">
       <StadiumBackground />
       
       {/* Modals */}
