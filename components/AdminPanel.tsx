@@ -5,9 +5,10 @@ import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { auth, functions, db } from '../firebase';
 import { NotificationConfig } from '../types';
 import RaffleLayout from './Raffle/RaffleLayout';
+import ProductManager from './Admin/Products/ProductManager';
 
 export default function AdminPanel() {
-  const [section, setSection] = useState<'CLIENTS' | 'SELLERS' | 'SALES' | 'INVENTORY' | 'RAFFLE' | 'CONFIG'>('CLIENTS');
+  const [section, setSection] = useState<'CLIENTS' | 'SELLERS' | 'SALES' | 'INVENTORY' | 'PRODUCTS' | 'RAFFLE' | 'CONFIG'>('CLIENTS');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalClients: 0, totalSellers: 0, totalCodes: 0 });
@@ -172,6 +173,7 @@ export default function AdminPanel() {
           <button onClick={() => setSection('SELLERS')} className={`w-full text-left px-4 py-3 rounded ${section === 'SELLERS' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>💼 Vendedores</button>
           <button onClick={() => setSection('SALES')} className={`w-full text-left px-4 py-3 rounded ${section === 'SALES' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>🧾 Validar Ventas</button>
           <div className="border-t border-gray-700 my-2 pt-2"></div>
+          <button onClick={() => setSection('PRODUCTS')} className={`w-full text-left px-4 py-3 rounded ${section === 'PRODUCTS' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>📺 Productos & Tickets</button>
           <button onClick={() => setSection('INVENTORY')} className={`w-full text-left px-4 py-3 rounded ${section === 'INVENTORY' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>📦 Inventario Códigos</button>
           <button onClick={() => setSection('RAFFLE')} className={`w-full text-left px-4 py-3 rounded ${section === 'RAFFLE' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>🎰 Sorteo</button>
           <div className="border-t border-gray-700 my-2 pt-2"></div>
@@ -183,7 +185,9 @@ export default function AdminPanel() {
       <main className="ml-64 flex-1 p-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">{section}</h1>
         
-        {section === 'CONFIG' ? (
+        {section === 'PRODUCTS' ? (
+            <ProductManager />
+        ) : section === 'CONFIG' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl">
             {/* General Settings */}
             <div className="bg-white p-6 rounded shadow">

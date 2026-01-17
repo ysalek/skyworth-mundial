@@ -1,0 +1,51 @@
+:root {
+  --header-h: 72px;
+
+  /* Brand Colors */
+  --color-skyworth-blue: #002F6C;
+  --color-skyworth-dark: #001A3D;
+  --color-skyworth-light: #005BBB;
+  --color-skyworth-accent: #FFD700;
+  --color-skyworth-grass: #28A745;
+  --color-skyworth-pitch: #1E7E34;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #0B0F19; /* Fallback */
+}
+
+h1, h2, h3, .font-sport {
+  font-family: 'Teko', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Utils */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

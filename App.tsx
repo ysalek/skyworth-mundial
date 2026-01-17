@@ -5,6 +5,8 @@ import PublicLanding from './components/PublicLanding';
 import AdminPanel from './components/AdminPanel';
 import AdminLogin from './components/AdminLogin';
 import SellerPortal from './components/SellerPortal';
+import PublicLayout from './components/Layouts/PublicLayout';
+import SellerLayout from './components/Layouts/SellerLayout';
 
 enum View {
   LANDING = 'LANDING',
@@ -79,8 +81,16 @@ export default function App() {
 
   return (
     <>
-      {currentView === View.LANDING && <PublicLanding />}
-      {currentView === View.SELLER && <SellerPortal />}
+      {currentView === View.LANDING && (
+        <PublicLayout>
+          <PublicLanding />
+        </PublicLayout>
+      )}
+      {currentView === View.SELLER && (
+        <SellerLayout>
+          <SellerPortal />
+        </SellerLayout>
+      )}
       {currentView === View.ADMIN_LOGIN && <AdminLogin onLogin={() => setCurrentView(View.ADMIN_DASHBOARD)} />}
       {currentView === View.ADMIN_DASHBOARD && (
         isAdmin ? 

@@ -104,21 +104,6 @@ export default function PublicLanding() {
       <ScannerModal isOpen={showScanner} onClose={() => setShowScanner(false)} onScan={(code) => setForm({ ...form, serial: code })} />
       <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} onAccept={() => setAcceptedTerms(true)} />
 
-      {/* Navbar */}
-      <nav className="relative z-20 border-b border-white/5 bg-[#0B0F19]/80 backdrop-blur-md sticky top-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <div className="text-2xl font-sport text-white tracking-widest">SKYWORTH</div>
-              <span className="bg-skyworth-blue text-[10px] px-2 py-0.5 rounded text-white font-bold tracking-wider">PROMO 2025</span>
-            </div>
-            <div className="text-xs text-gray-400 font-mono">
-                Sorteo: {raffleDate}
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Split - 2 Campaigns */}
       <div className="relative z-10 pt-10 pb-12 px-4">
         <div className="text-center mb-10">
@@ -253,15 +238,6 @@ export default function PublicLanding() {
         </div>
       </div>
 
-      <footer className="bg-[#0B0F19] text-gray-500 py-8 text-center text-xs border-t border-white/10 relative z-10">
-        <p className="mb-2">&copy; 2025 Skyworth Bolivia. Todos los derechos reservados.</p>
-        <button 
-          onClick={(e) => { e.preventDefault(); window.location.hash = 'admin'; }} 
-          className="text-gray-700 hover:text-gray-500 transition underline bg-transparent border-0 cursor-pointer"
-        >
-          Acceso Administrativo
-        </button>
-      </footer>
     </div>
   );
 }
