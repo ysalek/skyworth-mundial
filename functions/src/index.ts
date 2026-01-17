@@ -220,13 +220,22 @@ export const registerSellerSale = functions.https.onCall(async (data, context) =
 
   try {
     return await db.runTransaction(async (t) => {
+      // Fetch Product Config for Points
+      let pointsToAdd = 0;
+      const productsSnap = await t.get(db.collection('products').where('model', '==', tvModel));
+      if (!productsSnap.empty) {
+         const pData = productsSnap.docs[0].data();
+         pointsToAdd = pData.pointsSeller || 0;
+      }
+
       const sellerDoc = await t.get(sellerRef);
       // Initialize or Update Seller Stats
       if (!sellerDoc.exists) {
           t.set(sellerRef, {
               uid,
               email: context.auth!.token.email || '',
-              totalSales: 1, 
+              totalSales: 1,
+              totalPoints: pointsToAdd,
               city: city, 
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               lastSaleAt: admin.firestore.FieldValue.serverTimestamp()
@@ -234,6 +243,7 @@ export const registerSellerSale = functions.https.onCall(async (data, context) =
       } else {
           t.update(sellerRef, {
               totalSales: admin.firestore.FieldValue.increment(1),
+              totalPoints: admin.firestore.FieldValue.increment(pointsToAdd),
               lastSaleAt: admin.firestore.FieldValue.serverTimestamp(),
               city: city 
           });
@@ -250,6 +260,7 @@ export const registerSellerSale = functions.https.onCall(async (data, context) =
         invoicePath,
         city, 
         status: 'PENDING',
+        pointsEarned: pointsToAdd,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
@@ -328,12 +339,13 @@ export const getLeaderboard = functions.https.onCall(async (data, context) => {
       try {
         const q = db.collection('sellers')
             .where('city', '==', city)
-            .orderBy('totalSales', 'desc')
+            .orderBy('totalPoints', 'desc')
             .limit(3);
         const snap = await q.get();
         results[city] = snap.docs.map(d => ({
             name: d.data().fullName || d.data().email.split('@')[0],
-            sales: d.data().totalSales
+            sales: d.data().totalSales,
+            points: d.data().totalPoints || 0
         }));
       } catch (innerErr) {
         // Log individual city failures (likely missing index) but don't fail whole request
@@ -411,7 +423,7 @@ export const sendTestNotification = functions.https.onCall(async (data, context)
   if (!config) throw new functions.https.HttpsError('failed-precondition', 'No hay configuración guardada.');
 
   if (type === 'whatsapp') {
-      const { token, phoneId, templateName } = config.whatsapp || {};
+      const { token, phoneId } = config.whatsapp || {};
       if (!token || !phoneId) throw new functions.https.HttpsError('failed-precondition', 'Faltan datos de WhatsApp.');
       
       try {
@@ -428,4 +440,50 @@ export const sendTestNotification = functions.https.onCall(async (data, context)
   }
   
   return { success: false };
+});
+
+// --- PUBLIC: SERIAL VALIDATION ---
+export const validateSerial = functions.https.onCall(async (data, context) => {
+  const serial = data.serial ? String(data.serial).trim().toUpperCase() : '';
+  if (!serial) throw new functions.https.HttpsError('invalid-argument', 'Serial vacío.');
+
+  try {
+    // 1. Check Valid Codes
+    const codeRef = db.collection('valid_codes').doc(serial);
+    const codeDoc = await codeRef.get();
+
+    if (!codeDoc.exists) {
+        return { status: 'NOT_FOUND', message: 'Serial no encontrado. Verifica el Número de Serial del TV.' };
+    }
+
+    const codeData = codeDoc.data();
+    // Check if used
+    if (codeData?.used) {
+        return { status: 'USED', message: 'Este serial ya fue registrado.' };
+    }
+
+    // 2. Get Product Info (for coupons count)
+    let coupons = 1;
+    let description = '';
+
+    if (codeData?.model) {
+        const productsSnap = await db.collection('products').where('model', '==', codeData.model).limit(1).get();
+        if (!productsSnap.empty) {
+            const pData = productsSnap.docs[0].data();
+            coupons = pData.couponsBuyer || 1;
+            description = pData.description || '';
+        }
+    }
+
+    return {
+        status: 'AVAILABLE',
+        model: codeData?.model,
+        coupons,
+        description
+    };
+
+  } catch (error: any) {
+    console.error("Error validating serial:", error);
+    throw new functions.https.HttpsError('internal', 'Error validando el serial.');
+  }
 });

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { collection, query, orderBy, limit, getDocs, doc, getDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, where, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { auth, functions, db } from '../firebase';
-import { NotificationConfig, Winner } from '../types';
+import { NotificationConfig, Winner, Product } from '../types';
 
 export default function AdminPanel() {
-  const [section, setSection] = useState<'CLIENTS' | 'SELLERS' | 'SALES' | 'INVENTORY' | 'RAFFLE' | 'CONFIG'>('CLIENTS');
+  const [section, setSection] = useState<'CLIENTS' | 'SELLERS' | 'SALES' | 'INVENTORY' | 'RAFFLE' | 'CONFIG' | 'PRODUCTS'>('CLIENTS');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalClients: 0, totalSellers: 0, totalCodes: 0 });
@@ -26,6 +26,10 @@ export default function AdminPanel() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+
+  // Products State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
 
   useEffect(() => {
     if (section === 'CONFIG') {
@@ -158,12 +162,39 @@ export default function AdminPanel() {
       let q;
       if (section === 'CLIENTS') q = query(collection(db, 'clients'), orderBy('createdAt', 'desc'), limit(50));
       else if (section === 'SELLERS') q = query(collection(db, 'sellers'), orderBy('totalSales', 'desc'), limit(50));
+      else if (section === 'PRODUCTS') q = query(collection(db, 'products'));
       else q = query(collection(db, 'seller_sales'), orderBy('createdAt', 'desc'), limit(50));
       
       const snap = await getDocs(q);
-      setData(snap.docs.map(d => d.data()));
+      setData(snap.docs.map(d => ({...d.data(), id: d.id})));
     } catch (e) { console.error(e); } 
     finally { setLoading(false); }
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingProduct) return;
+
+      try {
+          if (editingProduct.id === 'new') {
+              const { id, ...data } = editingProduct;
+              await addDoc(collection(db, 'products'), data);
+          } else {
+             const { id, ...data } = editingProduct;
+             await updateDoc(doc(db, 'products', id), data);
+          }
+          setIsEditingProduct(false);
+          setEditingProduct(null);
+          fetchData();
+      } catch (e: any) { alert("Error guardando producto: " + e.message); }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+      if (!window.confirm("¿Eliminar este producto?")) return;
+      try {
+          await deleteDoc(doc(db, 'products', id));
+          fetchData();
+      } catch (e: any) { alert("Error eliminando: " + e.message); }
   };
 
   const handleReviewSale = async (saleId: string, action: 'APPROVE' | 'REJECT') => {
@@ -195,25 +226,129 @@ export default function AdminPanel() {
         </div>
       )}
 
-      <aside className="w-64 bg-slate-900 text-white flex flex-col fixed h-full z-10 overflow-y-auto">
-        <div className="p-6 font-sport text-2xl border-b border-gray-700">SKYWORTH ADMIN</div>
-        <nav className="flex-1 p-4 space-y-2">
-          <button onClick={() => setSection('CLIENTS')} className={`w-full text-left px-4 py-3 rounded ${section === 'CLIENTS' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>👥 Clientes</button>
-          <button onClick={() => setSection('SELLERS')} className={`w-full text-left px-4 py-3 rounded ${section === 'SELLERS' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>💼 Vendedores</button>
-          <button onClick={() => setSection('SALES')} className={`w-full text-left px-4 py-3 rounded ${section === 'SALES' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>🧾 Validar Ventas</button>
-          <div className="border-t border-gray-700 my-2 pt-2"></div>
-          <button onClick={() => setSection('INVENTORY')} className={`w-full text-left px-4 py-3 rounded ${section === 'INVENTORY' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>📦 Inventario Códigos</button>
-          <button onClick={() => setSection('RAFFLE')} className={`w-full text-left px-4 py-3 rounded ${section === 'RAFFLE' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>🎰 Sorteo</button>
-          <div className="border-t border-gray-700 my-2 pt-2"></div>
-          <button onClick={() => setSection('CONFIG')} className={`w-full text-left px-4 py-3 rounded ${section === 'CONFIG' ? 'bg-skyworth-blue' : 'hover:bg-white/10'}`}>⚙️ Configuración</button>
+      {isEditingProduct && editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm">
+           <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden animate-fade-in">
+               <div className="bg-skyworth-dark text-white p-6 flex justify-between items-center">
+                   <h3 className="text-xl font-sport tracking-wide">
+                       {editingProduct.id === 'new' ? 'NUEVO PRODUCTO' : 'EDITAR PRODUCTO'}
+                   </h3>
+                   <button onClick={() => setIsEditingProduct(false)} className="text-white hover:text-gray-300 text-2xl">&times;</button>
+               </div>
+
+               <form onSubmit={handleSaveProduct} className="p-6 space-y-6">
+                   <div className="grid grid-cols-2 gap-4">
+                       <div>
+                           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Modelo</label>
+                           <input required className="w-full p-2 border rounded" value={editingProduct.model} onChange={e => setEditingProduct({...editingProduct, model: e.target.value})} />
+                       </div>
+                       <div>
+                           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción</label>
+                           <input className="w-full p-2 border rounded" placeholder="Ej: 55 Pulgadas" value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
+                       </div>
+                   </div>
+
+                   <div>
+                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tier / Categoría</label>
+                       <select className="w-full p-2 border rounded" value={editingProduct.tier} onChange={e => setEditingProduct({...editingProduct, tier: e.target.value})}>
+                           <option value="GOLD">GOLD</option>
+                           <option value="SILVER">SILVER</option>
+                           <option value="BRONZE">BRONZE</option>
+                       </select>
+                   </div>
+
+                   <div className="border-t border-gray-100 my-4"></div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                       <div>
+                           <label className="block text-xs font-bold text-skyworth-blue uppercase mb-1">Configuración de Cupones</label>
+                           <p className="text-[10px] text-gray-400 mb-2">Nro de Cupones (Comprador)</p>
+                           <input type="number" min="0" className="w-full p-2 border rounded font-mono font-bold text-center text-lg" value={editingProduct.couponsBuyer} onChange={e => setEditingProduct({...editingProduct, couponsBuyer: parseInt(e.target.value) || 0})} />
+                       </div>
+                       <div>
+                           <label className="block text-xs font-bold text-green-600 uppercase mb-1">Incentivos Vendedor</label>
+                           <p className="text-[10px] text-gray-400 mb-2">Puntos Vendedor</p>
+                           <input type="number" min="0" className="w-full p-2 border rounded font-mono font-bold text-center text-lg bg-green-50 border-green-200" value={editingProduct.pointsSeller} onChange={e => setEditingProduct({...editingProduct, pointsSeller: parseInt(e.target.value) || 0})} />
+                       </div>
+                   </div>
+
+                   <div className="flex justify-end gap-3 pt-4 border-t">
+                       <button type="button" onClick={() => setIsEditingProduct(false)} className="px-4 py-2 text-gray-500 hover:text-gray-700 font-bold text-sm">CANCELAR</button>
+                       <button type="submit" className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded shadow">GUARDAR CAMBIOS</button>
+                   </div>
+               </form>
+           </div>
+        </div>
+      )}
+
+      <aside className="w-64 bg-slate-900 text-white flex flex-col fixed h-full z-10 overflow-y-auto border-r border-gray-800">
+        <div className="p-6 font-sport text-2xl border-b border-gray-800 tracking-wider">SKYWORTH ADMIN</div>
+        <nav className="flex-1 p-4 space-y-1">
+          <button onClick={() => setSection('CLIENTS')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'CLIENTS' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>👥 Clientes</button>
+          <button onClick={() => setSection('SELLERS')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'SELLERS' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>💼 Vendedores</button>
+          <button onClick={() => setSection('PRODUCTS')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'PRODUCTS' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>🏷️ Productos</button>
+          <button onClick={() => setSection('SALES')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'SALES' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>🧾 Validar Ventas</button>
+          <div className="border-t border-gray-800 my-2 pt-2 opacity-50"></div>
+          <button onClick={() => setSection('INVENTORY')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'INVENTORY' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>📦 Inventario Códigos</button>
+          <button onClick={() => setSection('RAFFLE')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'RAFFLE' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>🎰 Sorteo</button>
+          <div className="border-t border-gray-800 my-2 pt-2 opacity-50"></div>
+          <button onClick={() => setSection('CONFIG')} className={`w-full text-left px-4 py-3 rounded transition-colors ${section === 'CONFIG' ? 'bg-skyworth-blue text-white shadow' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>⚙️ Configuración</button>
         </nav>
-        <div className="p-4 border-t border-gray-700"><button onClick={() => auth.signOut()} className="text-sm text-red-400 hover:text-red-300">Cerrar Sesión</button></div>
+        <div className="p-4 border-t border-gray-800"><button onClick={() => auth.signOut()} className="text-sm text-red-400 hover:text-red-300 transition-colors w-full text-left px-2">Cerrar Sesión</button></div>
       </aside>
 
       <main className="ml-64 flex-1 p-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">{section}</h1>
         
-        {section === 'CONFIG' ? (
+        {section === 'PRODUCTS' ? (
+            <div>
+               <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-700">Catálogo de Productos</h2>
+                  <button onClick={() => { setEditingProduct({ id: 'new', model: '', description: '', tier: 'SILVER', couponsBuyer: 1, pointsSeller: 10, status: 'ACTIVE' }); setIsEditingProduct(true); }} className="bg-skyworth-blue text-white px-4 py-2 rounded font-bold hover:bg-skyworth-dark transition">
+                      + NUEVO PRODUCTO
+                  </button>
+               </div>
+
+               <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+                   <table className="w-full text-sm text-left text-gray-500">
+                       <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                           <tr>
+                               <th className="px-6 py-3">Modelo / ID</th>
+                               <th className="px-6 py-3">Descripción</th>
+                               <th className="px-6 py-3">Tier</th>
+                               <th className="px-6 py-3">Incentivos</th>
+                               <th className="px-6 py-3">Estado</th>
+                               <th className="px-6 py-3 text-right">Acciones</th>
+                           </tr>
+                       </thead>
+                       <tbody>
+                           {loading ? <tr><td colSpan={6} className="p-8 text-center">Cargando...</td></tr> : data.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-gray-400">No hay productos registrados.</td></tr> : data.map((item: any) => (
+                               <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
+                                   <td className="px-6 py-4 font-bold text-skyworth-dark">{item.model}</td>
+                                   <td className="px-6 py-4">{item.description}</td>
+                                   <td className="px-6 py-4"><span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded font-bold border border-gray-200">{item.tier}</span></td>
+                                   <td className="px-6 py-4">
+                                       <div className="flex gap-2">
+                                           <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold border border-blue-200" title="Cupones Comprador">🎟️ {item.couponsBuyer}x</span>
+                                           <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold border border-green-200" title="Puntos Vendedor">⭐ {item.pointsSeller} pts</span>
+                                       </div>
+                                   </td>
+                                   <td className="px-6 py-4">
+                                       <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ${item.status === 'ACTIVE' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                                           {item.status === 'ACTIVE' ? 'ACTIVO' : 'INACTIVO'}
+                                       </span>
+                                   </td>
+                                   <td className="px-6 py-4 text-right">
+                                       <button onClick={() => { setEditingProduct(item); setIsEditingProduct(true); }} className="text-blue-600 hover:text-blue-800 font-bold mr-3 text-xs uppercase">Editar</button>
+                                       <button onClick={() => handleDeleteProduct(item.id)} className="text-red-400 hover:text-red-600 font-bold text-xs uppercase">Borrar</button>
+                                   </td>
+                               </tr>
+                           ))}
+                       </tbody>
+                   </table>
+               </div>
+            </div>
+        ) : section === 'CONFIG' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl">
             {/* General Settings */}
             <div className="bg-white p-6 rounded shadow">
@@ -358,7 +493,7 @@ export default function AdminPanel() {
                         ) : (
                            <>
                              <td className="px-6 py-4 font-bold">{item.fullName}</td>
-                             <td className="px-6 py-4">{section === 'CLIENTS' ? item.ticketId : item.totalSales + ' Ventas'}</td>
+                             <td className="px-6 py-4">{section === 'CLIENTS' ? (item.ticketId || item.ticketIds?.join(', ') || 'Sin Cupón') : (item.totalPoints ? item.totalPoints + ' Puntos' : item.totalSales + ' Ventas')}</td>
                            </>
                         )}
                     </tr>

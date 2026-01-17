@@ -7,14 +7,18 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Montserrat', 'sans-serif'],
+        sport: ['Bebas Neue', 'sans-serif'],
+      },
       colors: {
         skyworth: {
-          blue: '#002F6C',    /* Azul Camiseta Local */
-          dark: '#001A3D',    /* Azul Noche Estadio */
-          light: '#005BBB',   /* Azul Eléctrico */
-          accent: '#FFD700',  /* Dorado Copa */
-          grass: '#28A745',   /* Verde Cancha */
-          pitch: '#1E7E34'    /* Verde Oscuro */
+          blue: '#0B6FBF',    /* Azul Intenso Texto */
+          dark: '#071A2E',    /* Azul Noche Estadio (Background) */
+          navy: '#0B2A4A',
+          orange: '#FF6A00',  /* Naranja CTA */
+          'orange-glow': '#FFB000',
+          accent: '#FF6A00',
         }
       },
       backgroundImage: {
