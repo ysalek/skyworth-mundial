@@ -38,7 +38,7 @@ const StadiumBackground = () => (
 
 export default function PublicLanding() {
   const [loading, setLoading] = useState(false);
-  const [ticket, setTicket] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [raffleDate, setRaffleDate] = useState<string>('Próximamente');
   const [products, setProducts] = useState<Product[]>([]);
@@ -143,8 +143,8 @@ export default function PublicLanding() {
       const res = await registerFn({ ...form, invoicePath });
       const data = res.data as RegistrationResponse;
 
-      if (data.success && data.ticketId) {
-        setTicket(data.ticketId);
+      if (data.success && (data.ticketId || (data as any).ticketIds)) {
+        setTickets((data as any).ticketIds || [data.ticketId]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err: any) {
@@ -154,21 +154,27 @@ export default function PublicLanding() {
     }
   };
 
-  if (ticket) {
+  if (tickets && tickets.length > 0) {
     return (
       <div className="min-h-screen bg-skyworth-navy text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
         <StadiumBackground />
-        <div className="relative z-10 bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl max-w-lg w-full text-center shadow-2xl animate-fade-in">
+        <div className="relative z-10 bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl max-w-xl w-full text-center shadow-2xl animate-fade-in">
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
             <span className="text-4xl text-white">✓</span>
           </div>
           <h2 className="text-4xl font-sport tracking-wider mb-2">¡REGISTRO COMPLETADO!</h2>
-          <p className="text-gray-300 mb-8 font-sans">Ya estás participando en el sorteo.</p>
+          <p className="text-gray-300 mb-8 font-sans">Has generado <strong className="text-white text-xl">{tickets.length}</strong> cupones para el sorteo.</p>
           
-          <div className="bg-skyworth-blue/30 border border-skyworth-blue/50 p-6 rounded-2xl mb-8 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-skyworth-accent to-transparent"></div>
-            <p className="text-xs uppercase tracking-[0.2em] text-skyworth-accent mb-2 font-bold">Tu Cupón Oficial</p>
-            <p className="text-5xl font-mono font-bold text-white tracking-widest drop-shadow-lg">{ticket}</p>
+          <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar mb-8">
+            {tickets.map((t, idx) => (
+                <div key={idx} className="bg-skyworth-blue/30 border border-skyworth-blue/50 p-4 rounded-xl relative overflow-hidden flex justify-between items-center group hover:bg-skyworth-blue/40 transition">
+                    <div className="flex items-center gap-3">
+                        <span className="bg-skyworth-accent text-white text-[10px] font-bold px-2 py-1 rounded">#{idx + 1}</span>
+                        <span className="font-mono font-bold text-2xl text-white tracking-widest drop-shadow-md">{t}</span>
+                    </div>
+                    <div className="opacity-50 group-hover:opacity-100 transition">🎟️</div>
+                </div>
+            ))}
           </div>
 
           <button onClick={() => window.location.reload()} className="text-sm text-gray-400 hover:text-white underline font-sans">

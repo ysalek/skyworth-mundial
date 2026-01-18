@@ -438,7 +438,7 @@ export default function AdminPanel() {
                         <div className="p-8 text-center">
                             <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-5xl mx-auto mb-6 shadow-inner">🏆</div>
                             <h3 className="text-3xl font-bold text-gray-800 mb-2">{winner.fullName}</h3>
-                            <div className="inline-block bg-gray-100 px-4 py-1 rounded-full text-gray-600 font-mono text-lg mb-6">{winner.ticketId}</div>
+                            <div className="inline-block bg-gray-100 px-4 py-1 rounded-full text-gray-600 font-mono text-lg mb-6">{(winner as any).winningTicketId || winner.ticketId}</div>
                             
                             <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto bg-gray-50 p-6 rounded-lg border border-gray-200">
                                 <div><p className="text-xs text-gray-400 uppercase">Cédula</p><p className="font-bold">{winner.ci}</p></div>
@@ -493,7 +493,7 @@ export default function AdminPanel() {
                         ) : (
                            <>
                              <td className="px-6 py-4 font-bold">{item.fullName}</td>
-                             <td className="px-6 py-4">{section === 'CLIENTS' ? (item.ticketId || item.ticketIds?.join(', ') || 'Sin Cupón') : (item.totalPoints ? item.totalPoints + ' Puntos' : item.totalSales + ' Ventas')}</td>
+                             <td className="px-6 py-4">{section === 'CLIENTS' ? (item.ticketIds?.length ? item.ticketIds.length + ' Cupones' : item.ticketId || 'Sin Cupón') : (item.totalPoints ? item.totalPoints + ' Puntos' : item.totalSales + ' Ventas')}</td>
                            </>
                         )}
                     </tr>

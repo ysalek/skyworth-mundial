@@ -63,6 +63,12 @@ export const registerClient = functions.https.onCall(async (data, context) => {
             if (codeData?.used) {
                 throw new functions.https.HttpsError('failed-precondition', 'Este código de serie ya figura como USADO en el sistema.');
             }
+
+            // Strict Model Check
+            if (codeData?.model && codeData.model !== tvModel) {
+                throw new functions.https.HttpsError('invalid-argument', `El serial ingresado corresponde al modelo ${codeData.model}, pero seleccionaste ${tvModel}.`);
+            }
+
             // Mark as used
             t.update(codeRef, { 
                 used: true, 
@@ -72,8 +78,36 @@ export const registerClient = functions.https.onCall(async (data, context) => {
         }
       }
 
-      const ticketId = generateTicketId();
+      // 3. Determine Coupons Count
+      let couponsCount = 1;
+      const productsSnap = await t.get(db.collection('products').where('model', '==', tvModel).limit(1));
+      if (!productsSnap.empty) {
+          couponsCount = productsSnap.docs[0].data().couponsBuyer || 1;
+      }
+
+      // 4. Generate Tickets
+      const ticketIds: string[] = [];
       const clientId = db.collection('clients').doc().id;
+      const now = admin.firestore.FieldValue.serverTimestamp();
+
+      for (let i = 0; i < couponsCount; i++) {
+          const tid = generateTicketId();
+          ticketIds.push(tid);
+
+          // Create Ticket Doc (for weighted raffle)
+          const ticketRef = db.collection('tickets').doc(tid);
+          t.set(ticketRef, {
+              ticketId: tid,
+              clientId,
+              fullName,
+              ci,
+              city,
+              phone,
+              tvModel,
+              serial: cleanSerial,
+              createdAt: now
+          });
+      }
 
       const docData = {
         clientId,
@@ -85,14 +119,16 @@ export const registerClient = functions.https.onCall(async (data, context) => {
         tvModel: String(tvModel),
         serial: cleanSerial,
         invoicePath: String(invoicePath),
-        ticketId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        ticketIds, // Store all IDs
+        ticketId: ticketIds[0], // Keep primary for backward compat
+        couponsCount,
+        createdAt: now,
         source: 'WEB_FORM'
       };
 
       t.set(db.collection('clients').doc(clientId), docData);
 
-      return { success: true, ticketId, message: 'Registro exitoso.' };
+      return { success: true, ticketIds, message: 'Registro exitoso.' };
     });
   } catch (error: any) {
     console.error("Error registering client:", error);
@@ -141,29 +177,33 @@ export const importCodes = functions.https.onCall(async (data, context) => {
 export const pickWinner = functions.https.onCall(async (data, context) => {
     assertAdmin(context);
     
-    // 1. Get all eligible clients
-    // Optimization: For huge DBs, use random ID query. For < 10k, getting all IDs is fine.
-    const snapshot = await db.collection('clients').select('clientId').get();
+    // 1. Get all eligible tickets (Weighted by coupon count naturally)
+    const snapshot = await db.collection('tickets').select('ticketId', 'clientId').get();
     
     if (snapshot.empty) {
-        throw new functions.https.HttpsError('not-found', 'No hay participantes registrados.');
+        throw new functions.https.HttpsError('not-found', 'No hay tickets registrados.');
     }
 
     const docs = snapshot.docs;
     const randomIndex = Math.floor(Math.random() * docs.length);
-    const winnerId = docs[randomIndex].id;
+    const winningTicketDoc = docs[randomIndex];
+    const { ticketId, clientId } = winningTicketDoc.data();
 
-    const winnerDoc = await db.collection('clients').doc(winnerId).get();
-    const winnerData = winnerDoc.data();
+    // 2. Get Full Client Data
+    const clientDoc = await db.collection('clients').doc(clientId).get();
+    const clientData = clientDoc.data();
 
-    if (!winnerData) throw new functions.https.HttpsError('internal', 'Error recuperando datos del ganador.');
+    if (!clientData) throw new functions.https.HttpsError('internal', 'Error recuperando datos del cliente ganador.');
 
-    // 2. Save to Winners collection
-    await db.collection('winners').doc(winnerId).set({
-        ...winnerData,
+    // 3. Save to Winners collection
+    const winnerData = {
+        ...clientData,
+        winningTicketId: ticketId, // Specific ticket that won
         wonAt: admin.firestore.FieldValue.serverTimestamp(),
         selectedBy: context.auth?.uid
-    });
+    };
+
+    await db.collection('winners').doc(ticketId).set(winnerData); // Use Ticket ID as key to allow same person to win multiple times with diff tickets
 
     return { success: true, winner: winnerData };
 });

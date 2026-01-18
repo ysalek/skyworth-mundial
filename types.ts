@@ -9,6 +9,8 @@ export interface Client {
   serial?: string;
   invoicePath: string;
   ticketId: string;
+  ticketIds?: string[];
+  couponsCount?: number;
   createdAt: any; // Timestamp
 }
 
@@ -92,6 +94,7 @@ export interface ValidCode {
 
 export interface Winner {
   ticketId: string;
+  winningTicketId?: string;
   fullName: string;
   ci: string;
   city: string;
