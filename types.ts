@@ -9,6 +9,8 @@ export interface Client {
   serial?: string;
   invoicePath: string;
   ticketId: string;
+  ticketIds?: string[];
+  couponsCount?: number;
   createdAt: any; // Timestamp
 }
 
@@ -21,10 +23,21 @@ export interface Seller {
   email: string;
   leaderCi?: string; // CI of the seller who invited this user
   totalSales: number;
+  totalPoints?: number;
   lastSaleAt?: any;
   isCertified?: boolean;
   quizScore?: number;
   certifiedAt?: any;
+}
+
+export interface Product {
+  id: string;
+  model: string;
+  description: string; // Inches/Desc
+  tier: string;
+  couponsBuyer: number;
+  pointsSeller: number;
+  status: 'ACTIVE' | 'INACTIVE';
 }
 
 export interface Sale {
@@ -81,6 +94,7 @@ export interface ValidCode {
 
 export interface Winner {
   ticketId: string;
+  winningTicketId?: string;
   fullName: string;
   ci: string;
   city: string;

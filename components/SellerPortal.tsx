@@ -289,10 +289,10 @@ export default function SellerPortal() {
                 <div key={city} className="bg-white rounded-xl shadow p-4 mb-4">
                   <h3 className="font-bold text-gray-700 border-b pb-2 mb-2">{city}</h3>
                   {leaderboard[city]?.length === 0 && <p className="text-xs text-gray-400 italic">Sin datos</p>}
-                  {leaderboard[city]?.map((s: any, i: number) => (
+                  {leaderboard[city]?.map((seller: any, i: number) => (
                       <div key={i} className="flex justify-between py-2 border-b last:border-0">
-                          <span className="text-sm">#{i+1} {s.name}</span>
-                          <span className="font-bold text-skyworth-blue">{s.sales}</span>
+                          <span className="text-sm">#{i+1} {seller.name}</span>
+                          <span className="font-bold text-skyworth-blue">{seller.points !== undefined ? seller.points + ' pts' : seller.sales}</span>
                       </div>
                   ))}
                 </div>

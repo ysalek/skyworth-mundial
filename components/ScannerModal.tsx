@@ -75,7 +75,7 @@ export default function ScannerModal({ isOpen, onClose, onScan }: Props) {
   }, [isOpen]);
 
   const stopScanner = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
+    if (scannerRef.current) {
         try {
             await scannerRef.current.stop();
             scannerRef.current.clear();
